@@ -50,11 +50,23 @@ def warn(ok: bool, label: str, detail: str = "") -> None:
 
 # --- 1. 외부 요청이 없어야 한다 -------------------------------------------
 # 연수장 네트워크가 느리거나 막히면 CDN 자원 하나가 화면 전체를 늦춘다.
-EXTERNAL = re.compile(
-    r'(?:src|href)\s*=\s*["\'](?:https?:)?//(?!127\.0\.0\.1|localhost)', re.I
+#
+# 예외는 폰트 CDN 하나뿐이다(사용자 결정, 2026-08-04). 글자를 깎아 담으면
+# 원고를 고칠 때마다 다시 깎아야 하고 깜빡하면 그 글자만 다른 글꼴로 튀는데,
+# 그 관리비를 지지 않기로 했다. 폰트가 못 오면 맑은 고딕으로 떨어질 뿐 화면은
+# 그대로 뜬다 — 이 예외가 감당하는 최악이 그 정도라서 허용한다.
+#
+# 목록에 없는 외부 자원은 여전히 실패다. 스크립트·이미지·분석 도구가 슬그머니
+# 들어오는 것을 막는 그물은 그대로 둔다.
+ALLOWED_EXTERNAL = {
+    "https://cdn.jsdelivr.net",
+    "https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css",
+}
+URL_IN_TAG = re.compile(
+    r'(?:src|href)\s*=\s*["\']((?:https?:)?//[^"\']+)["\']', re.I
 )
 # CSS의 @import·url()과 JS의 fetch도 같은 그물에 넣는다. HTML만 봐서는
-# CDN 0건 제약이 지켜지는지 알 수 없다.
+# CDN 0건 제약이 지켜지는지 알 수 없다. 이쪽은 예외 없이 0건이다.
 EXTERNAL_ASSET = re.compile(
     r'(?:@import\s+(?:url\()?["\']?|url\(\s*["\']?|fetch\(\s*["\'])'
     r'(?:https?:)?//(?!127\.0\.0\.1|localhost)', re.I
@@ -62,9 +74,23 @@ EXTERNAL_ASSET = re.compile(
 for html in sorted(ROOT.glob("*.html")):
     hits = []
     for i, line in enumerate(html.read_text(encoding="utf-8").split("\n"), 1):
-        if EXTERNAL.search(line):
-            hits.append(f"{html.name}:{i}  {line.strip()[:90]}")
-    check(not hits, f"{html.name} — 외부 자원 요청 없음", "\n       ".join(hits))
+        for url in URL_IN_TAG.findall(line):
+            norm = url if url.lower().startswith("http") else "https:" + url
+            host = norm.split("/")[2].lower() if norm.count("/") >= 2 else ""
+            if host in ("127.0.0.1", "localhost") or norm.rstrip("/") in ALLOWED_EXTERNAL:
+                continue
+            hits.append(f"{html.name}:{i}  {url[:90]}")
+    check(not hits, f"{html.name} — 허용 목록 밖 외부 자원 없음", "\n       ".join(hits))
+
+# 예외로 연 폰트 CDN이 실제로 각 페이지에 걸려 있는지도 본다. 한 페이지만
+# 빠지면 그 페이지만 맑은 고딕으로 떠서, 넘길 때 글자가 바뀐다.
+PRETENDARD_CSS = (
+    "https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css"
+)
+missing_font_link = [h.name for h in sorted(ROOT.glob("*.html"))
+                     if PRETENDARD_CSS not in h.read_text(encoding="utf-8")]
+check(not missing_font_link, "모든 페이지가 프리텐다드 CDN을 부름",
+      "빠진 페이지: " + ", ".join(missing_font_link))
 
 for asset in sorted(list((ROOT / "assets" / "css").glob("*.css"))
                     + list((ROOT / "assets" / "js").glob("*.js"))):
@@ -232,6 +258,76 @@ LEAKY = [".xlsx", ".xls", ".hwp", ".hwpx", ".pptx", ".docx"]
 leaked = [str(p.relative_to(ROOT)) for p in ROOT.rglob("*")
           if p.is_file() and p.suffix.lower() in LEAKY]
 check(not leaked, "학생 자료 형식 파일 없음", ", ".join(leaked))
+
+# --- 6. 웹폰트 ------------------------------------------------------------
+# 본문·머리글은 프리텐다드 CDN이 맡는다(위 1번에서 링크를 확인했다).
+# 프롬프트에 쓰는 D2Coding만 저장소에 담는다 — 쓸 만한 CDN이 없어서다.
+#
+# D2Coding은 글자를 깎지 않고 통째로 담았지만, 담는 과정에서 잘못된 face를
+# 고르거나 파일이 잘려도 화면에는 '조금 이상한 글꼴'로만 보인다. 그래서 실제
+# 프롬프트 글자가 폰트 안에 다 있는지 파일을 열어 대조한다.
+
+FONT_DIR = ROOT / "assets" / "fonts"
+css_text = (ROOT / "assets" / "css" / "site.css").read_text(encoding="utf-8")
+
+check((FONT_DIR / "D2Coding.woff2").exists(), "D2Coding.woff2 — 파일 있음 (프롬프트)")
+check("D2Coding.woff2" in css_text, "D2Coding.woff2 — site.css가 참조함")
+# 라이선스(SIL OFL)는 폰트를 재배포할 때 같이 담아야 한다. 공개 저장소다.
+# 프리텐다드는 CDN이 자기 라이선스와 함께 내주므로 여기서 담지 않는다.
+check((FONT_DIR / "LICENSE-D2Coding-OFL.txt").exists(),
+      "LICENSE-D2Coding-OFL.txt — 함께 배포됨")
+
+# preload가 없는 파일을 가리키면 브라우저가 조용히 무시한다. 지금은 preload를
+# 쓰지 않지만, 나중에 넣고 경로를 틀리는 일을 막아 둔다.
+bad_preload = []
+for html in sorted(ROOT.glob("*.html")):
+    for href in re.findall(r'<link[^>]*rel=["\']preload["\'][^>]*href=["\']([^"\']+)["\']',
+                           html.read_text(encoding="utf-8")):
+        if not href.startswith("http") and not (ROOT / href).exists():
+            bad_preload.append(f"{html.name} -> {href}")
+check(not bad_preload, "preload 대상 파일이 모두 실재함", ", ".join(bad_preload))
+
+try:
+    from fontTools.ttLib import TTFont
+except ImportError:
+    warn(False, "D2Coding 글리프 커버리지 점검",
+         "fontTools가 없어 건너뜁니다: pip install fonttools")
+else:
+    fp = FONT_DIR / "D2Coding.woff2"
+    if fp.exists():
+        f = TTFont(str(fp))
+        cm = set()
+        for tb in f["cmap"].tables:
+            cm |= set(tb.cmap.keys())
+        f.close()
+
+        # 프롬프트 본문만 D2Coding으로 렌더된다.
+        prompt_text: list[str] = []
+
+        def walk(node, in_prompt=False):
+            if isinstance(node, dict):
+                for k, v in node.items():
+                    walk(v, in_prompt or k in ("prompt", "prompts"))
+            elif isinstance(node, list):
+                for v in node:
+                    walk(v, in_prompt)
+            elif isinstance(node, str) and in_prompt:
+                prompt_text.append(node)
+
+        for jf in jsons:
+            walk(json.loads(jf.read_text(encoding="utf-8")))
+
+        used = set("".join(prompt_text)) - set("\n\r\t")
+        missing = sorted(c for c in used if ord(c) not in cm)
+        gone_hangul = [c for c in missing
+                       if 0xAC00 <= ord(c) <= 0xD7A3 or 0x3131 <= ord(c) <= 0x318E]
+        # 이모지는 어느 본문 폰트에도 없다. 시스템 이모지 글꼴로 떨어지는 게
+        # 정상이므로 실패가 아니라 주의로 남긴다.
+        gone_other = [c for c in missing if c not in gone_hangul]
+        check(not gone_hangul, "D2Coding — 프롬프트의 한글이 모두 들어 있음",
+              "빠진 글자: " + "".join(gone_hangul))
+        warn(not gone_other, "D2Coding — 프롬프트의 기호도 모두 들어 있음",
+             "시스템 폰트로 대체됨: " + "".join(gone_other))
 
 # --- 결과 -----------------------------------------------------------------
 print("\n" + "=" * 62)
