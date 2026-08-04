@@ -1,0 +1,25 @@
+# 이 저장소는 공개다. 실수로 올라가면 되돌리기 어려우므로 넉넉히 막는다.
+
+node_modules/
+.vercel/
+.omc/
+.remember/
+.impeccable/
+.playwright-mcp/
+.DS_Store
+Thumbs.db
+
+# 오피스 임시 파일
+~$*
+
+# 학생 자료는 어떤 형태로도 이 저장소에 들어오지 않는다.
+*.xlsx
+*.xls
+*.hwp
+*.hwpx
+*.pptx
+*.docx
+
+# 테스트 산출물
+test-results/
+playwright-report/
