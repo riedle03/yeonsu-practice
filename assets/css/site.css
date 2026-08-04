@@ -341,6 +341,22 @@ a { color: inherit; }
 }
 .shot a:hover .shot__more { color: var(--ink); background: var(--rule-soft); }
 
+/* --- 개인정보 안전 안내 ---------------------------------------------------
+   학생 기록을 올려도 되는지가 이 카드의 실질적인 관문이다. 못 보고 지나치면
+   실습을 통째로 건너뛰게 되므로, 카드 안에서 가장 눈에 띄게 둔다.
+   완료색(인주)은 쓰지 않는다 — 그 색은 '내가 끝낸 것'에만 쓴다. */
+
+.safety {
+  margin: 18px 0 0; padding: 14px 16px;
+  border: 1.5px solid var(--ink); border-radius: 8px;
+  background: var(--rule-soft);
+}
+.safety__label {
+  font-size: 13.5px; font-weight: 700; color: var(--ink);
+  margin-bottom: 5px; letter-spacing: -0.01em;
+}
+.safety__body { margin: 0; font-size: 15.5px; color: var(--ink); line-height: 1.7; }
+
 /* --- 실습 자료 내려받기 --------------------------------------------------- */
 
 .downloads { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; }

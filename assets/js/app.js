@@ -14,7 +14,8 @@
     chatgpt: "ChatGPT",
     canva: "캔바",
     google: "구글",
-    neis: "NEIS"
+    neis: "NEIS",
+    checker: "생기부 점검기"
   };
 
   /* --- 진도 저장 ---------------------------------------------------------
@@ -258,6 +259,15 @@
         dls.appendChild(a);
       });
       art.appendChild(dls);
+    }
+
+    // 개인정보 안내는 눈에 띄어야 한다. 이걸 못 보면 선생님은 학생 이름을
+    // 일일이 지우고 올리거나, 아예 실습을 건너뛴다.
+    if (card.safety) {
+      var safe = el("div", "safety");
+      safe.appendChild(el("div", "safety__label", "개인정보 — 이 도구는 안전합니다"));
+      safe.appendChild(el("p", "safety__body", card.safety));
+      art.appendChild(safe);
     }
 
     if (card.success) {
