@@ -259,6 +259,52 @@ leaked = [str(p.relative_to(ROOT)) for p in ROOT.rglob("*")
           if p.is_file() and p.suffix.lower() in LEAKY]
 check(not leaked, "학생 자료 형식 파일 없음", ", ".join(leaked))
 
+# --- 5.5 단계-이미지 결합 --------------------------------------------------
+# 그림이 엉뚱한 단계에 붙으면 연수생은 자기가 잘못한 줄 알고 실습을 멈춘다.
+# 배정을 '안 하는' 것은 안전(카드 끝 격자로 감)하지만, '틀리게' 하는 것은
+# 사고다. 그래서 데이터가 깨진 경우만 FAIL로 막고, 판단이 필요한 것은 WARN.
+#
+# 유일성은 반드시 '카드 안에서만' 본다. 같은 스크린샷을 여러 카드가 나눠 쓰는
+# 것은 정당하다(같은 화면을 두 단계에서 참조할 수 있다). 전역으로 걸면
+# 멀쩡한 데이터를 고치다 진짜 사고를 만든다.
+
+step_bad, step_warn = [], []
+for jf in jsons:
+    for card in json.loads(jf.read_text(encoding="utf-8")).get("cards", []):
+        cid = card["id"]
+        imgs = card.get("images") or []
+        nsteps = len(card.get("steps") or [])
+        seen_files, per_step = set(), {}
+
+        for im in imgs:
+            f = im.get("file")
+            if f in seen_files:
+                step_bad.append(f"{cid}: 같은 카드에 '{f}' 가 두 번 들어 있음")
+            seen_files.add(f)
+
+            if "step" not in im:
+                continue
+            s = im["step"]
+            if not isinstance(s, int) or isinstance(s, bool):
+                step_bad.append(f"{cid}/{f}: step 이 정수가 아님 ({s!r})")
+            elif nsteps == 0:
+                step_bad.append(f"{cid}/{f}: 단계가 없는 카드인데 step {s} 이 붙어 있음")
+            elif s < 1 or s > nsteps:
+                step_bad.append(f"{cid}/{f}: step {s} 이 1~{nsteps} 범위 밖")
+            else:
+                per_step.setdefault(s, []).append(f)
+
+        for s, fs in per_step.items():
+            if len(fs) >= 3:
+                step_warn.append(f"{cid} 단계 {s}: 그림 {len(fs)}장 — "
+                                 "화면이 그림으로 덮여 다음 단계가 안 보일 수 있음")
+        if imgs and nsteps and not per_step:
+            step_warn.append(f"{cid}: 그림 {len(imgs)}장이 모두 미배정 "
+                             "(의도한 것이면 그대로 두세요)")
+
+check(not step_bad, "단계-이미지 배정이 데이터로 성립함", "\n       ".join(step_bad))
+warn(not step_warn, "단계-이미지 배정에 눈여겨볼 것 없음", "\n       ".join(step_warn))
+
 # --- 6. 웹폰트 ------------------------------------------------------------
 # 본문·머리글은 프리텐다드 CDN이 맡는다(위 1번에서 링크를 확인했다).
 # 프롬프트에 쓰는 D2Coding만 저장소에 담는다 — 쓸 만한 CDN이 없어서다.
