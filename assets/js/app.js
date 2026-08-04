@@ -330,6 +330,25 @@
     return status;
   }
 
+  // 히어로는 장식이라 콘텐츠 JSON에 두지 않는다. JSON은 원고와 대조되는
+  // 문구의 자리이고, 그림은 대조 대상이 아니다. 파트 키로 파일을 정한다.
+  //
+  // 파일이 없으면 상자째 걷어낸다. 연수장에서 깨진 이미지 아이콘이 뜨면
+  // 선생님은 자기 인터넷이 문제인 줄 알고 실습을 멈춘다.
+  function buildHero(partKey) {
+    var box = el("div", "hero");
+    var img = document.createElement("img");
+    img.alt = "";                      // 장식 — 낭독기는 건너뛴다
+    img.setAttribute("aria-hidden", "true");
+    img.loading = "eager";             // 첫 화면이라 늦게 뜨면 덜컹인다
+    img.addEventListener("error", function () {
+      if (box.parentNode) box.parentNode.removeChild(box);
+    });
+    img.src = "assets/img/hero-" + partKey + ".webp";
+    box.appendChild(img);
+    return box;
+  }
+
   function renderPart(partKey) {
     var data = (window.YEONSU || {})[partKey];
     var main = document.getElementById("main");
@@ -341,6 +360,8 @@
     }
 
     var status = ensureStatus();
+    main.appendChild(buildHero(partKey));
+
     var head = el("header", "parthead");
     head.appendChild(el("div", "parthead__eyebrow", data.eyebrow || ""));
     head.appendChild(el("h1", "parthead__title", data.title || ""));

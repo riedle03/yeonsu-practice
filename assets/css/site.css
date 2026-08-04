@@ -173,6 +173,41 @@ a { color: inherit; }
 .cover__lead { font-size: clamp(18.5px, 2.2vw, 21px); color: var(--ink-soft); margin: 0 0 4px; max-width: 62ch; }
 .cover__meta { color: var(--slate); font-size: 16.5px; margin-top: 18px; }
 
+/* --- 히어로 --------------------------------------------------------------
+   표지와 각 파트 머리에 한 장씩. 정보를 나르지 않고 분위기만 잡는 자리라,
+   그림 안에 글자나 화면 목업을 넣지 않는다 — 연수생이 자기 화면과 대조할
+   대상은 `assets/img/`의 실제 스크린샷뿐이어야 한다.
+
+   장식이므로 `alt=""`로 두어 낭독기가 건너뛰게 한다. 여기서 설명할 내용이
+   있다면 그건 그림이 아니라 본문에 있어야 할 내용이다. */
+
+.hero {
+  margin: 0 0 28px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--card);
+  line-height: 0;               /* img 아래 여백 제거 */
+}
+.hero img {
+  display: block; width: 100%; height: auto;
+  aspect-ratio: 3 / 1; object-fit: cover;
+}
+/* 표지에서는 제목·머리글 아래에 놓여 표지 글과 파트 카드를 가른다. */
+.hero--cover { margin: 28px 0 0; }
+
+@media (prefers-color-scheme: dark) {
+  /* 먹빛 무채색 그림이라 반전 한 번이면 어두운 판이 된다. 장마다 어두운
+     버전을 따로 만들면 관리할 파일이 배로 늘고, 한쪽만 고치는 사고가 난다. */
+  .hero img { filter: invert(1); }
+}
+
+@media (max-width: 640px) {
+  /* 폰에서 3:1은 너무 납작해 그림이 뭉갠 띠처럼 보인다. */
+  .hero img { aspect-ratio: 2 / 1; }
+  .hero { margin-bottom: 20px; }
+}
+
 /* --- 파트 카드 (표지) ----------------------------------------------------- */
 
 .parts { display: grid; gap: 16px; padding: 36px 0 48px; grid-template-columns: repeat(3, 1fr); }
