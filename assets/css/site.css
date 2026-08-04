@@ -211,7 +211,12 @@ a { color: inherit; }
   position: relative; background: var(--card);
   border: 1px solid var(--rule); border-radius: var(--radius);
   padding: 24px 24px 22px; margin-bottom: 18px;
+  /* 카드 링크(#p2-05)를 받아 열었을 때 제목이 고정 바에 가리지 않게.
+     좁은 화면은 머리말(57px)에 진행바(44px)까지 붙으므로 더 띄운다. */
   scroll-margin-top: 80px;
+}
+@media (max-width: 1023px) {
+  .card { scroll-margin-top: 116px; }
 }
 .card--done { border-color: color-mix(in srgb, var(--seal) 45%, var(--rule)); }
 

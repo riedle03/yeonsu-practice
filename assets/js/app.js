@@ -55,10 +55,7 @@
   /* --- 복사 --------------------------------------------------------------
      원문은 항상 데이터에서 가져온다. 화면에 보이는 텍스트를 긁지 않는다.
      프롬프트가 접혀 있어도 전문이 복사되는 이유가 이것이다. */
-  function copyText(text) {
-    if (navigator.clipboard && window.isSecureContext) {
-      return navigator.clipboard.writeText(text);
-    }
+  function legacyCopy(text) {
     return new Promise(function (resolve, reject) {
       var ta = document.createElement("textarea");
       ta.value = text;
@@ -73,6 +70,36 @@
       document.body.removeChild(ta);
       ok ? resolve() : reject(new Error("copy-failed"));
     });
+  }
+
+  function copyText(text) {
+    // 최신 방식이 '없을 때'뿐 아니라 '거부될 때'도 옛 방식으로 넘어가야 한다.
+    // file://로 열거나(오프라인 사본), 권한을 막았거나, 창이 포커스를 잃으면
+    // writeText는 존재하지만 거부한다. 그때 폴백을 안 타면 연수장에서
+    // 프롬프트 26개가 전부 수동 복사로 떨어진다.
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        return navigator.clipboard.writeText(text).catch(function () {
+          return legacyCopy(text);
+        });
+      } catch (e) {
+        return legacyCopy(text);
+      }
+    }
+    return legacyCopy(text);
+  }
+
+  // 펼침 상태는 클래스·버튼 글자·aria 세 곳에 걸쳐 있다. 한 곳에서만 바꾸게
+  // 묶어 둔다. 예전에 복사 실패 경로가 클래스만 바꿔, 펼쳐진 글을 보려고
+  // '전문 펼치기'를 누르면 오히려 접히는 일이 있었다.
+  function setPromptOpen(box, open) {
+    if (!box) return;
+    box.classList.toggle("prompt--open", open);
+    var toggle = box.querySelector(".prompt__toggle");
+    if (toggle) {
+      toggle.textContent = open ? "접기" : "전문 펼치기";
+      toggle.setAttribute("aria-expanded", String(open));
+    }
   }
 
   function wireCopy(btn, text, status) {
@@ -91,7 +118,7 @@
         btn.textContent = "직접 복사하세요";
         var box = btn.closest(".prompt");
         if (box) {
-          box.classList.add("prompt--open");
+          setPromptOpen(box, true);
           var pre = box.querySelector(".prompt__text");
           if (pre) {
             var range = document.createRange();
@@ -133,9 +160,7 @@
       toggle.type = "button";
       toggle.setAttribute("aria-expanded", "false");
       toggle.addEventListener("click", function () {
-        var open = box.classList.toggle("prompt--open");
-        toggle.textContent = open ? "접기" : "전문 펼치기";
-        toggle.setAttribute("aria-expanded", String(open));
+        setPromptOpen(box, !box.classList.contains("prompt--open"));
       });
       box.appendChild(toggle);
     } else {
@@ -291,15 +316,31 @@
 
   /* --- 파트 화면 ---------------------------------------------------------- */
 
+  // 낭독기 안내용 자리. 없으면 만들어 준다 — 없을 때 조용히 두면 도장과
+  // 복사 버튼이 각각 죽는데 화면은 멀쩡해 보여서 당일 원인을 못 찾는다.
+  function ensureStatus() {
+    var status = document.getElementById("status");
+    if (!status) {
+      status = el("p", "sr");
+      status.id = "status";
+      status.setAttribute("role", "status");
+      status.setAttribute("aria-live", "polite");
+      document.body.appendChild(status);
+    }
+    return status;
+  }
+
   function renderPart(partKey) {
     var data = (window.YEONSU || {})[partKey];
     var main = document.getElementById("main");
+    if (!main) return;          // 담을 곳이 없으면 할 일도 없다
     if (!data || !data.cards) {
-      main.appendChild(el("p", "callout", "실습 내용을 불러오지 못했습니다. 새로고침해 주세요."));
+      main.appendChild(el("p", "callout",
+        "실습 내용을 불러오지 못했습니다. 새로고침해 주세요."));
       return;
     }
 
-    var status = document.getElementById("status");
+    var status = ensureStatus();
     var head = el("header", "parthead");
     head.appendChild(el("div", "parthead__eyebrow", data.eyebrow || ""));
     head.appendChild(el("h1", "parthead__title", data.title || ""));
