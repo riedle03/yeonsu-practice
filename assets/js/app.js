@@ -173,6 +173,29 @@
 
   /* --- 실습 카드 ---------------------------------------------------------- */
 
+  // 화면 예시 한 장. 단계 밑에 붙을 때는 stepNo를 넘긴다 — 낭독기가 어느
+  // 단계의 그림인지 알 수 있어야 하고, 크기도 단계용이 더 작아야 한다.
+  function buildShot(im, card, stepNo) {
+    var fig = el("figure", "shot" + (stepNo ? " shot--step" : ""));
+    var link = el("a");
+    link.href = "assets/img/" + im.file;
+    link.target = "_blank";
+    link.rel = "noopener";
+    var img = el("img");
+    img.src = "assets/img/" + im.file;
+    img.alt = stepNo
+      ? "단계 " + stepNo + " 화면 예시 — " + (card.title || "")
+      : (card.title || "") + " 화면 예시";
+    img.loading = "lazy";
+    img.decoding = "async";
+    if (im.w) img.width = im.w;
+    if (im.h) img.height = im.h;
+    link.appendChild(img);
+    link.appendChild(el("span", "shot__more", "눌러서 크게 보기 ↗"));
+    fig.appendChild(link);
+    return fig;
+  }
+
   function buildCard(card, status, onToggle) {
     var art = el("article", "card");
     art.id = card.id;
@@ -237,50 +260,72 @@
       art.appendChild(prep);
     }
 
-    // 단계
+    // 그림을 단계별로 가른다. `step`(1-기준)이 붙은 것은 그 단계 밑으로,
+    // 없거나 범위를 벗어난 것은 카드 끝 격자로 — 즉 예전 화면 그대로다.
+    // 배정이 하나도 없어도 화면이 오늘과 똑같이 뜨는 것이 이 코드의 안전망이다.
+    var byStep = {}, loose = [];
+    (card.images || []).forEach(function (im) {
+      var n = im.step;
+      if (typeof n === "number" && n >= 1 &&
+          card.steps && n <= card.steps.length) {
+        (byStep[n] = byStep[n] || []).push(im);
+      } else {
+        loose.push(im);
+      }
+    });
+
+    // 단계 — 그림은 반드시 해당 <li> '안에' 넣는다. 형제로 두면 .steps의
+    // CSS 카운터가 li마다 증가하는 구조라 번호가 어긋난다.
     if (card.steps && card.steps.length) {
       var ol = el("ol", "steps");
-      card.steps.forEach(function (t) { ol.appendChild(el("li", null, t)); });
+      card.steps.forEach(function (t, i) {
+        var li = el("li", null, t);
+        var mine = byStep[i + 1];
+        if (mine && mine.length) {
+          var box = el("div", "shots shots--step");
+          mine.forEach(function (im) { box.appendChild(buildShot(im, card, i + 1)); });
+          li.appendChild(box);
+        }
+        ol.appendChild(li);
+      });
       art.appendChild(ol);
     }
 
     // 프롬프트
     promptsOf(card).forEach(function (p) { art.appendChild(buildPrompt(p, status)); });
 
-    // 그림 — 강의 화면과 대조하는 용도
-    if (card.images && card.images.length) {
+    // 어느 단계에도 붙지 않는 그림 — 카드 전체에 관한 화면
+    if (loose.length) {
       var figs = el("div", "shots");
-      card.images.forEach(function (im) {
-        var fig = el("figure", "shot");
-        var link = el("a");
-        link.href = "assets/img/" + im.file;
-        link.target = "_blank";
-        link.rel = "noopener";
-        var img = el("img");
-        img.src = "assets/img/" + im.file;
-        img.alt = (card.title || "") + " 화면 예시";
-        img.loading = "lazy";
-        img.decoding = "async";
-        if (im.w) img.width = im.w;
-        if (im.h) img.height = im.h;
-        link.appendChild(img);
-        link.appendChild(el("span", "shot__more", "눌러서 크게 보기 ↗"));
-        fig.appendChild(link);
-        figs.appendChild(fig);
-      });
+      loose.forEach(function (im) { figs.appendChild(buildShot(im, card, null)); });
       art.appendChild(figs);
     }
 
     // 실습 자료 내려받기 — 브라우저에서 만들지 않고 실제 파일을 준다.
     // 즉석 생성은 다운로드 차단·인코딩 사고가 나는데, 연수 중에는 손쓸 수 없다.
-    if (card.downloads && card.downloads.length) {
+    //
+    // links는 내려받는 대신 '거기 가서 사본을 뜨는' 자료다(구글 시트 등).
+    // 파일을 받아 다시 올리는 것보다 사본 한 번이 연수장에서 빠르다.
+    // 생김새는 내려받기와 같은 줄에 두되, 화살표로 나가는 링크임을 알린다.
+    var dlist = (card.downloads || []).length + (card.links || []).length;
+    if (dlist) {
       var dls = el("div", "downloads");
-      card.downloads.forEach(function (d) {
+      (card.downloads || []).forEach(function (d) {
         var a = el("a", "download");
         a.href = "assets/samples/" + d.file;
         a.setAttribute("download", d.file);
         a.appendChild(el("span", "download__icon", "↓"));
         a.appendChild(el("span", null, d.label || d.file));
+        dls.appendChild(a);
+      });
+      (card.links || []).forEach(function (l) {
+        if (!l || !l.url) return;
+        var a = el("a", "download");
+        a.href = l.url;
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.appendChild(el("span", "download__icon", "↗"));
+        a.appendChild(el("span", null, l.label || l.url));
         dls.appendChild(a);
       });
       art.appendChild(dls);

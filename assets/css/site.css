@@ -431,6 +431,35 @@ a { color: inherit; }
 }
 .shot a:hover .shot__more { color: var(--ink); background: var(--rule-soft); }
 
+/* 단계 밑에 붙는 화면 예시 -------------------------------------------------
+   "③번 밑에 ③번 화면"이 이 사이트의 핵심 동작이다. 그림이 단계에서 떨어져
+   나와 카드 끝에 몰려 있으면, 연수생은 몇 번째 그림이 몇 번째 단계인지를
+   자기가 추측해야 한다 — 강의를 따라가는 중에 할 수 있는 일이 아니다.
+
+   단계용은 카드 끝 격자(340px)보다 낮게 잡는다. 그림이 화면을 채워 버리면
+   다음 단계 번호가 시야 밖으로 밀려, 방금 해결한 문제가 형태만 바꿔 돌아온다.
+
+   그리고 여기서만 잘라내기(cover)를 쓰지 않는다. 카드 끝 격자의 그림은
+   '이런 화면이 나온다'는 참고라 잘려도 되지만, 단계에 붙은 그림은 연수생이
+   자기 화면과 한 눈에 맞춰 보는 대조 대상이다. 잘린 화면과 자기 화면을
+   비교하게 만들면 그림을 붙인 의미가 없다. 그래서 contain으로 전체를
+   보여 주고, 높이만 묶어 다음 단계를 밀어내지 않게 한다. */
+
+.shots--step {
+  display: flex; flex-wrap: wrap; align-items: flex-start;
+  gap: 10px; margin: 10px 0 6px;
+}
+.shot--step { flex: 0 1 auto; max-width: 100%; }
+.shot--step img {
+  width: auto; max-width: 100%; max-height: 260px;
+  object-fit: contain; object-position: center;
+}
+.shot--step .shot__more { font-size: 12.5px; padding: 5px 9px; }
+
+@media (max-width: 640px) {
+  .shot--step img { max-height: 220px; }
+}
+
 /* --- 개인정보 안전 안내 ---------------------------------------------------
    학생 기록을 올려도 되는지가 이 카드의 실질적인 관문이다. 못 보고 지나치면
    실습을 통째로 건너뛰게 되므로, 카드 안에서 가장 눈에 띄게 둔다.
