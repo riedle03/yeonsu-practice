@@ -570,6 +570,9 @@ a { color: inherit; }
 .foot__rights a { color: var(--ink-soft); text-decoration: underline; }
 .foot__rights a:hover { color: var(--ink); }
 
+/* 이메일과 뒤에 붙는 조사가 갈라지면 조사만 다음 줄에 남는다. */
+.foot__rights .nb { white-space: nowrap; }
+
 .foot__made { margin: 10px 0 0; font-size: 13.5px; opacity: .75; }
 .foot__reset {
   background: none; border: 1px solid var(--rule); color: var(--slate);
