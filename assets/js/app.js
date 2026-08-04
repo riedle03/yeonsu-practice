@@ -171,6 +171,93 @@
     return box;
   }
 
+  /* --- 교과별 프롬프트 ----------------------------------------------------
+     연수생은 국어·미술·수학·지리 중 한 교과다. 프롬프트 하나가 5천 자라
+     네 개를 나란히 두면 2만 자가 되고, 자기 것을 찾아 스크롤하는 동안
+     강의는 다음 단계로 넘어간다.
+
+     그래서 고른 교과의 것만 남기고 나머지는 화면에서 아예 지운다(hidden).
+     한 번 고르면 이 기기에 저장돼 모든 단계·모든 파트에 그대로 적용된다 —
+     단계마다 다시 고르게 하면 그게 또 손이 간다. */
+
+  var SUBJECTS = ["국어", "미술", "수학", "지리"];
+  var SUBJ_KEY = "yeonsu.subject.v1";
+  var subjectPanels = [];      // 화면의 모든 교과 블록. 하나를 고르면 전부 따라 바뀐다
+
+  function loadSubject() {
+    try {
+      var v = window.localStorage.getItem(SUBJ_KEY);
+      return SUBJECTS.indexOf(v) >= 0 ? v : null;
+    } catch (e) { return null; }
+  }
+
+  function saveSubject(s) {
+    try { window.localStorage.setItem(SUBJ_KEY, s); } catch (e) { /* 사생활 보호 모드 */ }
+  }
+
+  function applySubject(s) {
+    subjectPanels.forEach(function (show) { show(s); });
+  }
+
+  function buildSubjectPrompts(list, status) {
+    var wrap = el("div", "subjects");
+
+    var bar = el("div", "subjects__bar");
+    bar.appendChild(el("span", "subjects__label", "내 교과"));
+    var chips = el("div", "subjects__chips");
+    chips.setAttribute("role", "group");
+    chips.setAttribute("aria-label", "교과 선택");
+    bar.appendChild(chips);
+    wrap.appendChild(bar);
+
+    var hint = el("p", "subjects__hint", "교과를 누르면 그 교과 프롬프트가 열립니다.");
+    wrap.appendChild(hint);
+
+    // 한 교과에 프롬프트가 여럿일 수 있다(전문 + 입력 양식). 배열로 받는다.
+    var boxes = {}, chipEls = {};
+    list.forEach(function (p) {
+      var box = buildPrompt(p, status);
+      box.hidden = true;
+      (boxes[p.subject] = boxes[p.subject] || []).push(box);
+      wrap.appendChild(box);
+    });
+
+    SUBJECTS.forEach(function (s) {
+      if (!boxes[s]) return;
+      var c = el("button", "subjects__chip", s);
+      c.type = "button";
+      c.setAttribute("aria-pressed", "false");
+      c.addEventListener("click", function () {
+        saveSubject(s);
+        applySubject(s);
+        status.textContent = s + "과 프롬프트를 열었습니다.";
+      });
+      chipEls[s] = c;
+      chips.appendChild(c);
+    });
+
+    function show(s) {
+      var picked = false;
+      SUBJECTS.forEach(function (k) {
+        if (chipEls[k]) chipEls[k].setAttribute("aria-pressed", String(k === s));
+        if (!boxes[k]) return;
+        boxes[k].forEach(function (box) {
+          box.hidden = (k !== s);
+          if (k === s) setPromptOpen(box, true);
+        });
+        if (k === s) picked = true;
+      });
+      // 고르기 전에는 안내만 보인다. 빈 화면을 남기지 않는다.
+      hint.textContent = picked
+        ? s + "과 프롬프트입니다. 다른 교과가 필요하면 위에서 바꾸세요."
+        : "교과를 누르면 그 교과 프롬프트가 열립니다.";
+      wrap.classList.toggle("subjects--picked", picked);
+    }
+
+    subjectPanels.push(show);
+    return wrap;
+  }
+
   /* --- 실습 카드 ---------------------------------------------------------- */
 
   // 화면 예시 한 장. 단계 밑에 붙을 때는 stepNo를 넘긴다 — 낭독기가 어느
@@ -291,8 +378,14 @@
       art.appendChild(ol);
     }
 
-    // 프롬프트
-    promptsOf(card).forEach(function (p) { art.appendChild(buildPrompt(p, status)); });
+    // 프롬프트 — `subject`가 붙은 것은 교과 블록으로 따로 묶는다.
+    // 교과가 없는 프롬프트는 네 교과가 그대로 쓰는 공통이라 항상 보인다.
+    var commonP = [], subjectP = [];
+    promptsOf(card).forEach(function (p) {
+      (p.subject ? subjectP : commonP).push(p);
+    });
+    commonP.forEach(function (p) { art.appendChild(buildPrompt(p, status)); });
+    if (subjectP.length) art.appendChild(buildSubjectPrompts(subjectP, status));
 
     // 어느 단계에도 붙지 않는 그림 — 카드 전체에 관한 화면
     if (loose.length) {
@@ -438,6 +531,9 @@
     buildSpine(data);
     updateProgress(data);
     watchPosition(data);
+
+    // 지난번에 고른 교과를 그대로 되살린다. 파트를 넘겨도 다시 고를 일이 없다.
+    applySubject(loadSubject());
   }
 
   function buildSpine(data) {

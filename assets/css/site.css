@@ -416,6 +416,49 @@ a { color: inherit; }
 }
 .prompt__toggle:hover { color: var(--ink); background: var(--rule-soft); }
 
+/* --- 교과별 프롬프트 ------------------------------------------------------
+   연수생은 네 교과 중 하나다. 네 개를 다 보여 주면 자기 것을 찾는 데 시간이
+   들고, 그 사이 강의는 다음 단계로 간다. 그래서 고른 것만 남기고 나머지는
+   화면에서 지운다 — 흐리게 하거나 접어 두는 정도로는 시선을 뺏긴다.
+
+   고르기 전에는 프롬프트가 하나도 안 보인다. 그 대신 무엇을 눌러야 하는지가
+   비어 있는 자리에 남는다. 빈 화면을 두면 연수생은 사이트가 고장 났다고 본다. */
+
+.subjects {
+  margin: 18px 0 0; padding: 14px 16px;
+  border: 1px solid var(--rule); border-left: 4px solid var(--ink);
+  border-radius: 8px; background: var(--card);
+}
+.subjects__bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.subjects__label { font-size: 15px; color: var(--slate); white-space: nowrap; }
+.subjects__chips { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* 강의를 따라가며 급하게 누른다. 44px 아래로는 빗나간다. */
+.subjects__chip {
+  border: 1.5px solid var(--rule); background: var(--card); color: var(--ink-soft);
+  border-radius: 999px; padding: 9px 18px; min-height: 44px;
+  font-family: var(--font-body); font-size: 16px; font-weight: var(--w-body);
+  cursor: pointer; transition: border-color .12s, color .12s, background .12s;
+}
+.subjects__chip:hover { border-color: var(--ink-soft); color: var(--ink); }
+
+/* 고른 교과는 눌린 채로 남아야 한다. 지금 무엇을 복사하게 되는지가
+   복사 버튼을 누르기 전에 보여야 사고가 안 난다. */
+.subjects__chip[aria-pressed="true"] {
+  background: var(--ink); border-color: var(--ink); color: var(--paper);
+}
+
+.subjects__hint { margin: 10px 0 0; font-size: 15px; color: var(--slate); }
+.subjects--picked .subjects__hint { margin-bottom: 2px; }
+.subjects .prompt { margin-top: 12px; }
+.subjects [hidden] { display: none; }   /* 다른 교과는 자리도 차지하지 않는다 */
+
+@media (max-width: 640px) {
+  .subjects { padding: 12px 12px; }
+  .subjects__chips { width: 100%; }
+  .subjects__chip { flex: 1 1 auto; padding: 9px 12px; }
+}
+
 /* --- 화면 예시 -----------------------------------------------------------
    강의 화면에 뜨는 바로 그 스크린샷. 연수생이 자기 화면과 대조하는 자리다. */
 
