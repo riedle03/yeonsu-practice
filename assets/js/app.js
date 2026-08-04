@@ -10,7 +10,9 @@
   var STORE_KEY = "yeonsu2026:done";
   var TOOL_NAME = {
     gemini: "제미나이",
-    notebooklm: "NotebookLM",
+    // 2026-08 제미나이 노트북으로 이름이 바뀌었다. 키(notebooklm)는 내부
+    // 식별자라 그대로 두고 화면에 보이는 이름만 바꾼다.
+    notebooklm: "제미나이 노트북",
     chatgpt: "ChatGPT",
     canva: "캔바",
     google: "구글",
