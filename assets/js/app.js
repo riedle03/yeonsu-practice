@@ -149,6 +149,10 @@
     bar.appendChild(btn);
     box.appendChild(bar);
 
+    // 이 프롬프트만 카드 설명과 다른 대목이 있을 때의 한 줄. 접힌 상태에서도
+    // 보이도록 본문 위에 둔다 — 펼쳐야 보이면 못 보고 지나간다.
+    if (p.hint) box.appendChild(el("p", "prompt__hint", p.hint));
+
     var body = el("div", "prompt__body");
     var pre = el("pre", "prompt__text", p.text);
     body.appendChild(pre);
@@ -257,6 +261,64 @@
     }
 
     subjectPanels.push(show);
+    return wrap;
+  }
+
+  /* --- 평가 종류별 프롬프트 ------------------------------------------------
+     한 단계가 지필과 수행을 함께 다루기도 한다. 두 벌을 나란히 두면 2,800자
+     아래에 또 4,600자가 붙어, 자기 것을 찾아 내리는 동안 강의는 넘어간다.
+
+     교과 칩과 다른 점이 하나 있다 — 고르기 전에도 첫 번째 것이 이미 열려 있다.
+     넷 중 어느 교과인지는 사이트가 알 수 없지만 평가 종류에는 기본값이 있다.
+     이 강의가 지필 흐름으로 진행되기 때문이다. 아무것도 안 고른 화면을 만들면,
+     어제까지 그냥 보이던 프롬프트가 사라진 것으로 읽힌다.
+
+     접힘 상태는 건드리지 않는다. 교과 블록은 고른 것을 펼쳐 주지만, 여기서는
+     첫 벌이 처음부터 보이므로 펼쳐 두면 카드가 화면 몇 개 길이로 늘어난다.
+     복사 버튼은 접혀 있어도 전문을 복사한다 — 그게 이 화면의 설계다. */
+
+  function buildTrackPrompts(list, status) {
+    var wrap = el("div", "tracks");
+
+    var bar = el("div", "tracks__bar");
+    bar.appendChild(el("span", "tracks__label", "평가 종류"));
+    var chips = el("div", "tracks__chips");
+    chips.setAttribute("role", "group");
+    chips.setAttribute("aria-label", "평가 종류 선택");
+    bar.appendChild(chips);
+    wrap.appendChild(bar);
+
+    // 종류와 순서는 데이터가 정한다. 여기에 이름을 적어 두면 카드가 늘 때마다
+    // 이 파일을 함께 고쳐야 하고, 그러다 한쪽만 고치면 프롬프트가 사라진다.
+    var order = [], boxes = {}, chipEls = {};
+    list.forEach(function (p) {
+      if (order.indexOf(p.track) < 0) order.push(p.track);
+      var box = buildPrompt(p, status);
+      box.hidden = true;
+      (boxes[p.track] = boxes[p.track] || []).push(box);
+      wrap.appendChild(box);
+    });
+
+    function show(t) {
+      order.forEach(function (k) {
+        chipEls[k].setAttribute("aria-pressed", String(k === t));
+        boxes[k].forEach(function (box) { box.hidden = (k !== t); });
+      });
+    }
+
+    order.forEach(function (t) {
+      var c = el("button", "tracks__chip", t);
+      c.type = "button";
+      c.setAttribute("aria-pressed", "false");
+      c.addEventListener("click", function () {
+        show(t);
+        status.textContent = t + " 프롬프트를 열었습니다.";
+      });
+      chipEls[t] = c;
+      chips.appendChild(c);
+    });
+
+    show(order[0]);
     return wrap;
   }
 
@@ -380,13 +442,17 @@
       art.appendChild(ol);
     }
 
-    // 프롬프트 — `subject`가 붙은 것은 교과 블록으로 따로 묶는다.
-    // 교과가 없는 프롬프트는 네 교과가 그대로 쓰는 공통이라 항상 보인다.
-    var commonP = [], subjectP = [];
+    // 프롬프트 — `track`(평가 종류)이나 `subject`(교과)가 붙은 것은 골라 보는
+    // 블록으로 따로 묶는다. 둘 다 없는 프롬프트는 모두가 그대로 쓰는 공통이라
+    // 항상 보인다.
+    var commonP = [], subjectP = [], trackP = [];
     promptsOf(card).forEach(function (p) {
-      (p.subject ? subjectP : commonP).push(p);
+      if (p.track) trackP.push(p);
+      else if (p.subject) subjectP.push(p);
+      else commonP.push(p);
     });
     commonP.forEach(function (p) { art.appendChild(buildPrompt(p, status)); });
+    if (trackP.length) art.appendChild(buildTrackPrompts(trackP, status));
     if (subjectP.length) art.appendChild(buildSubjectPrompts(subjectP, status));
 
     // 어느 단계에도 붙지 않는 그림 — 카드 전체에 관한 화면
