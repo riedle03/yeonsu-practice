@@ -473,19 +473,21 @@ a { color: inherit; }
 .tracks__bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .tracks__label { font-size: 15px; color: var(--slate); white-space: nowrap; }
 
-/* 맞붙은 칸 — 테두리는 묶음이 하나만 갖는다 */
+/* 맞붙은 칸 — 테두리는 묶음이 하나만 갖는다.
+   칸 사이 선을 칸마다 그리지 않고 틈으로 낸다. 바탕색이 틈으로 비쳐 선이 되므로
+   칸이 몇 개든, 줄이 바뀌든 선이 어긋나지 않는다. 교과가 늘 때마다 손볼 일이 없다. */
 .tracks__chips {
-  display: flex; border: 1.5px solid var(--rule);
+  display: flex; flex-wrap: wrap; gap: 1.5px;
+  background: var(--rule); border: 1.5px solid var(--rule);
   border-radius: 8px; overflow: hidden;
 }
 .tracks__chip {
-  border: 0; border-left: 1.5px solid var(--rule);
+  border: 0; flex: 1 1 auto;
   background: var(--card); color: var(--ink-soft);
-  padding: 9px 18px; min-height: 44px;      /* 강의를 따라가며 급하게 누른다 */
+  padding: 9px 16px; min-height: 44px;      /* 강의를 따라가며 급하게 누른다 */
   font-family: var(--font-body); font-size: 16px; font-weight: var(--w-body);
   cursor: pointer; transition: color .12s, background .12s;
 }
-.tracks__chip:first-child { border-left: 0; }
 .tracks__chip:hover { color: var(--ink); background: var(--rule-soft); }
 
 /* 지금 무엇을 복사하게 되는지가 복사 버튼을 누르기 전에 보여야 한다 */
@@ -505,7 +507,9 @@ a { color: inherit; }
 @media (max-width: 640px) {
   .tracks { padding: 12px 12px; }
   .tracks__chips { width: 100%; }
-  .tracks__chip { flex: 1 1 0; padding: 9px 10px; font-size: 15px; }
+  /* 좁은 화면에서는 네 칸이 한 줄에 들어가면 글자가 잘린다. 두 칸씩 두 줄로
+     떨어지게 하되 마지막 줄이 남으면 늘어나 빈자리를 채운다. */
+  .tracks__chip { flex: 1 1 40%; padding: 9px 8px; font-size: 15px; }
 }
 
 /* --- 화면 예시 -----------------------------------------------------------
